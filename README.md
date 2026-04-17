@@ -290,7 +290,7 @@ Requires software configuration in Pro-Motion to enable electronic gearing mode 
                                     └───────────┼──────────┼───┘
                                                 │          │
                          ┌──────────────────────┼──────────┼──────┐
-                         │  HD-15 BREAKOUT BOARD │          │      │
+                         │  HD-15 BREAKOUT BOARD│          │      │
                          │                      │          │      │
                          │  Pos 8  (+VP) ◄──────┘          │      │
                          │  Pos 15 (+VL) ◄──────┘          │      │
@@ -302,20 +302,20 @@ Requires software configuration in Pro-Motion to enable electronic gearing mode 
   │           │  Cable   │                      │ │ │             │
   └───────────┘          └──────────────────────┼─┼─┼─────────────┘
                                                 │ │ │
-                                    ┌───────────┼─┼─┼────────────┐
+                                    ┌───────────┼─┼─┼─────────────┐
                                     │  IXXAT    │ │ │             │
                                     │  D-Sub 9  │ │ │             │
                                     │           │ │ │             │
-                                    │  Pin 3 ◄──┘ │ │  (DGND)    │
-                                    │  Pin 2 ◄────┘ │  (CANL)    │
-                                    │  Pin 7 ◄──────┘  (CANH)    │
+                                    │  Pin 3 ◄──┘ │ │  (DGND)     │
+                                    │  Pin 2 ◄────┘ │  (CANL)     │
+                                    │  Pin 7 ◄──────┘  (CANH)     │
                                     │                             │
                                     │         USB ────────────┐   │
                                     └─────────────────────────┼───┘
                                                               │
                                                     ┌─────────┴──┐
-                                                    │   Laptop    │
-                                                    │ (Pro-Motion)│
+                                                    │   Laptop   │
+                                                    │(Pro-Motion)│
                                                     └────────────┘
 ```
 
