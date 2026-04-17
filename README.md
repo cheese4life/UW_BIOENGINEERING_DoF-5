@@ -511,6 +511,12 @@ Web: [www.dovermotion.com](http://www.dovermotion.com)
 
 ---
 
+## AI Disclosure
+
+This project uses an [AI Disclosure](AI_DISCLOSURE.md) documenting how AI tools were used during development.
+
+---
+
 ## License
 
 This document is a user-created summary derived from Dover Motion's publicly provided product documentation. All product specifications, trademarks, and connector references belong to their respective owners (Dover Motion / Dover Corporation, Harwin plc, Moxa Inc., HMS/IXXAT).
