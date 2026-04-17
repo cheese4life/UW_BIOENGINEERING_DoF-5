@@ -26,10 +26,10 @@ AI was consulted to **verify** choices around project structure, configuration p
 
 ### Debugging & Problem-Solving
 
-AI was used as a **diagnostic tool** to work through blocking technical issues (e.g., environment configuration, network problems, driver communication) that would have otherwise delayed productivity. The author identified the problems; AI assisted in isolating root causes and solutions.
+AI was used as a diagnostic tool to work through blocking technical issues (environment configuration, network problems, driver communication) that would have otherwise delayed productivity.
 
 AI was not used for the following:
-- Generating source code or algorithms
+- Generating entire source code or algorithms
 - Writing research content or analysis
 - Making design decisions without author review
 - Producing any output that was accepted without verification
