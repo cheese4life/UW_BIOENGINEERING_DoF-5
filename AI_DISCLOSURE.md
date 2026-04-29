@@ -22,7 +22,7 @@ All source code, system architecture, and feature design in `cornea_focus/` and 
 
 ### Engineering Best Practices
 
-AI was consulted to **verify** choices around project structure, configuration patterns, and Python packaging conventions. These were treated as a reference.
+AI was consulted to verify choices around project structure, configuration patterns, and Python packaging conventions. These were treated as a reference.
 
 ### Debugging & Problem-Solving
 

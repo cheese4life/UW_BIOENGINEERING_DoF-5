@@ -1,0 +1,33 @@
+# all units live in one place here. config.py loads this stuff
+# detector settings, control law settings, unit conversions, focus target, oct source, dof settings
+
+units:
+  pixel_to_dof_units: 1.0
+  dz_mm_per_row: 0.004593
+
+detector:
+  mask_top_rows: 10 # set rows to zero at top of OCT here to avoid artifacting at top
+  blur_sigma: 3 # set gaus blur strength here
+  peak_prominence: 10 # minimum gradient peak height to count as surface
+  smoothing_window: 11 # lateral median filter width in cols to avoid intense differences
+
+control:
+  focus_line_row: 150 # target row (where to focus)
+  deadband_um: 5.0  # don't move if within this threshold from target
+  max_move_um: 50.0 # safety cap per frame, max
+  ema_alpha: 0.2 # EMA filter weight, 20% of new command is received (to filter out jitter)
+
+  # CHANGE FOR TESTING ----
+source:
+  type: file # which source to use
+  path: data/samples/cornea_1.npy
+
+
+# SUBJECT TO CHANGE ----
+driver:
+  type: mock # switch between "mock" for simulation and "can" for real
+  can_channel: PCAN_USBBUS1
+  can_bitrate: 1000000
+
+
+
