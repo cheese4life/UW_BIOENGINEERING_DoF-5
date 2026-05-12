@@ -1,3 +1,5 @@
+# RUN COMMAND: python scripts/play_sim_with_dof.py
+
 """Playback simulated cornea frames with live surface detection overlay.
 
 Runs cornea_focus.surface.detect() on every frame and overlays:
