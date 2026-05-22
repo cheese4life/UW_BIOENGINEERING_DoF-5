@@ -1,0 +1,202 @@
+{
+  "0x35_GetEventStatus": {
+    "opcode": 53,
+    "label": "GetEventStatus",
+    "ok_count": 3,
+    "attempts": [
+      {
+        "ok": true,
+        "elapsed_us": 374.944,
+        "resp_hex": "001d",
+        "resp_len": 2
+      },
+      {
+        "ok": true,
+        "elapsed_us": 343.022,
+        "resp_hex": "001d",
+        "resp_len": 2
+      },
+      {
+        "ok": true,
+        "elapsed_us": 325.885,
+        "resp_hex": "001d",
+        "resp_len": 2
+      }
+    ]
+  },
+  "0xA6_GetActivityStatus": {
+    "opcode": 166,
+    "label": "GetActivityStatus",
+    "ok_count": 3,
+    "attempts": [
+      {
+        "ok": true,
+        "elapsed_us": 351.661,
+        "resp_hex": "00002184",
+        "resp_len": 4
+      },
+      {
+        "ok": true,
+        "elapsed_us": 339.413,
+        "resp_hex": "00002184",
+        "resp_len": 4
+      },
+      {
+        "ok": true,
+        "elapsed_us": 307.047,
+        "resp_hex": "00002184",
+        "resp_len": 4
+      }
+    ]
+  },
+  "0xA7_GetSignalStatus": {
+    "opcode": 167,
+    "label": "GetSignalStatus",
+    "ok_count": 3,
+    "attempts": [
+      {
+        "ok": true,
+        "elapsed_us": 352.923,
+        "resp_hex": "000000000000",
+        "resp_len": 6
+      },
+      {
+        "ok": true,
+        "elapsed_us": 348.454,
+        "resp_hex": "000000000000",
+        "resp_len": 6
+      },
+      {
+        "ok": true,
+        "elapsed_us": 326.653,
+        "resp_hex": "000000000000",
+        "resp_len": 6
+      }
+    ]
+  },
+  "0xAD_GetActualVelocity": {
+    "opcode": 173,
+    "label": "GetActualVelocity",
+    "ok_count": 3,
+    "attempts": [
+      {
+        "ok": true,
+        "elapsed_us": 433.908,
+        "resp_hex": "000000000000",
+        "resp_len": 6
+      },
+      {
+        "ok": true,
+        "elapsed_us": 461.673,
+        "resp_hex": "000000000000",
+        "resp_len": 6
+      },
+      {
+        "ok": true,
+        "elapsed_us": 446.001,
+        "resp_hex": "000000000000",
+        "resp_len": 6
+      }
+    ]
+  },
+  "0x1E_GetTargetPosition": {
+    "opcode": 30,
+    "label": "GetTargetPosition",
+    "ok_count": 3,
+    "attempts": [
+      {
+        "ok": true,
+        "elapsed_us": 455.948,
+        "resp_hex": "000000000000",
+        "resp_len": 6
+      },
+      {
+        "ok": true,
+        "elapsed_us": 493.244,
+        "resp_hex": "000000000000",
+        "resp_len": 6
+      },
+      {
+        "ok": true,
+        "elapsed_us": 432.92,
+        "resp_hex": "000000000000",
+        "resp_len": 6
+      }
+    ]
+  },
+  "0x4A_GetCommandedPosition": {
+    "opcode": 74,
+    "label": "GetCommandedPosition",
+    "ok_count": 3,
+    "attempts": [
+      {
+        "ok": true,
+        "elapsed_us": 482.28,
+        "resp_hex": "0000ffffff85",
+        "resp_len": 6
+      },
+      {
+        "ok": true,
+        "elapsed_us": 392.643,
+        "resp_hex": "0000ffffff85",
+        "resp_len": 6
+      },
+      {
+        "ok": true,
+        "elapsed_us": 379.872,
+        "resp_hex": "0000ffffff85",
+        "resp_len": 6
+      }
+    ]
+  },
+  "0xB6_GetMotorCommand": {
+    "opcode": 182,
+    "label": "GetMotorCommand",
+    "ok_count": 3,
+    "attempts": [
+      {
+        "ok": true,
+        "elapsed_us": 410.056,
+        "resp_hex": "001d",
+        "resp_len": 2
+      },
+      {
+        "ok": true,
+        "elapsed_us": 344.036,
+        "resp_hex": "001d",
+        "resp_len": 2
+      },
+      {
+        "ok": true,
+        "elapsed_us": 341.825,
+        "resp_hex": "001d",
+        "resp_len": 2
+      }
+    ]
+  },
+  "0x4B_GetIntegrationStep": {
+    "opcode": 75,
+    "label": "GetIntegrationStep",
+    "ok_count": 3,
+    "attempts": [
+      {
+        "ok": true,
+        "elapsed_us": 483.655,
+        "resp_hex": "000000000000",
+        "resp_len": 6
+      },
+      {
+        "ok": true,
+        "elapsed_us": 403.91,
+        "resp_hex": "000000000000",
+        "resp_len": 6
+      },
+      {
+        "ok": true,
+        "elapsed_us": 438.494,
+        "resp_hex": "000000000000",
+        "resp_len": 6
+      }
+    ]
+  }
+}
