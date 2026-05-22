@@ -8,7 +8,7 @@ from pathlib import Path
 class DetectorConfig:
     mask_top_rows: int
     blur_sigma: int
-    peak_prominence: float
+    peak_prominence: float 
     smoothing_window: int
 
 @dataclass
