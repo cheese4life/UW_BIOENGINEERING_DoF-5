@@ -23,15 +23,34 @@ Controls
   r      - restart
 """
 import csv
+import os
 import sys
 import time
 from collections import deque
 from pathlib import Path
 
 import numpy as np
+import matplotlib
+
+# When running on a headless host (e.g. SSH/VS Code Remote with no X display),
+# fall back to the WebAgg backend. It serves the live figure over HTTP on
+# localhost:8988; VS Code Remote auto-forwards the port so you can open the
+# URL printed at startup in your local browser. Override by exporting
+# MPLBACKEND or DOF_BACKEND.
+_forced_backend = os.environ.get("DOF_BACKEND") or os.environ.get("MPLBACKEND")
+if _forced_backend:
+    matplotlib.use(_forced_backend, force=True)
+elif not os.environ.get("DISPLAY") and sys.platform.startswith("linux"):
+    matplotlib.use("WebAgg", force=True)
+    matplotlib.rcParams["webagg.open_in_browser"] = False
+    matplotlib.rcParams["webagg.address"] = "0.0.0.0"
+    matplotlib.rcParams["webagg.port"] = int(os.environ.get("DOF_WEBAGG_PORT", 8988))
+    matplotlib.rcParams["webagg.port_retries"] = 50
+
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from matplotlib.patches import Rectangle
+
+print(f"[demo] matplotlib backend = {matplotlib.get_backend()}", flush=True)
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -102,7 +121,10 @@ def main() -> None:
     ax_img = fig.add_subplot(gs[0, 0])
     ax_gauge = fig.add_subplot(gs[0, 1])
     ax_hist = fig.add_subplot(gs[0, 2])
-    fig.canvas.manager.set_window_title("Cornea Focus Demo — Sim + DOF")
+    try:
+        fig.canvas.manager.set_window_title("Cornea Focus Demo — Sim + DOF")
+    except Exception:
+        pass
 
     # --- left: OCT image + overlays ------------------------------------------
     # aspect="auto" lets the image fill its panel. Axes are still labelled in
@@ -135,10 +157,9 @@ def main() -> None:
     ax_img.set_title("OCT view + surface detection", fontsize=10)
     # All live numbers go here, OUT of the title so they can never collide
     # with adjacent panels.
-    hud_text = ax_img.text(
-        0.005, 0.995, "", transform=ax_img.transAxes,
-        fontsize=9, family="monospace",
-        ha="left", va="top",
+    hud_text = fig.text(
+        0.01, 0.01, "", fontsize=9, family="monospace",
+        ha="left", va="bottom",
         bbox=dict(facecolor="black", alpha=0.7, edgecolor="none", pad=4),
         color="white",
     )
@@ -166,19 +187,23 @@ def main() -> None:
     span = stage_max - stage_min
     ax_gauge.axhspan(stage_min, stage_min + 0.05 * span, color="red", alpha=0.15)
     ax_gauge.axhspan(stage_max - 0.05 * span, stage_max, color="red", alpha=0.15)
-    # Filled "ribbon" from 0 to current actual position. Use a single
-    # Rectangle patch so we can just resize it each frame instead of
-    # tearing down and rebuilding a fill_between polygon (which kills blit).
-    actual_fill = Rectangle(
-        (-GAUGE_HALF * 0.5, 0.0), GAUGE_HALF, 0.0,
-        facecolor="lime", alpha=0.55, edgecolor="none", animated=True,
+    # Filled "ribbon" from 0 to current actual position (replaced each frame).
+    actual_fill = ax_gauge.fill_between(
+        [-GAUGE_HALF * 0.5, GAUGE_HALF * 0.5], 0, 0, color="lime", alpha=0.55,
     )
-    ax_gauge.add_patch(actual_fill)
-    # ACTUAL pointer (horizontal line)
+    # ACTUAL pointer (horizontal line + readout text)
     actual_marker = ax_gauge.axhline(0.0, color="lime", linewidth=2.5, label="actual")
+    actual_text = ax_gauge.text(
+        GAUGE_HALF * 0.95, 0.0, " 0.000", color="lime",
+        ha="left", va="center", fontsize=9, weight="bold",
+    )
     # TARGET pointer (dashed)
     target_marker = ax_gauge.axhline(0.0, color="orange", linewidth=1.5,
                                      linestyle="--", label="target")
+    target_text = ax_gauge.text(
+        -GAUGE_HALF * 0.95, 0.0, "0.000 ", color="orange",
+        ha="right", va="center", fontsize=9, weight="bold",
+    )
     ax_gauge.legend(loc="upper right", fontsize=7)
 
     # --- right: time history -------------------------------------------------
@@ -205,23 +230,12 @@ def main() -> None:
         "idx": 0,
         "t0": time.monotonic(),
         "last_target_mm": 0.0,
+        "actual_fill": actual_fill,
     }
-
-    # Mark every dynamic artist as animated so blit only repaints these.
-    for art in (img_artist, surface_line, top_line, bot_line, median_line,
-                actual_marker, target_marker,
-                target_line_h, actual_line_h, error_line_h, hud_text,
-                invalid_banner):
-        art.set_animated(True)
-    DYNAMIC_ARTISTS = (
-        img_artist, surface_line, top_line, bot_line, median_line,
-        actual_fill, actual_marker, target_marker,
-        target_line_h, actual_line_h, error_line_h, hud_text, invalid_banner,
-    )
 
     def update(_):
         if state["paused"]:
-            return DYNAMIC_ARTISTS
+            return ()
 
         i = state["idx"]
         raw = np.load(frame_paths[i])
@@ -269,14 +283,25 @@ def main() -> None:
         target_disp = float(np.clip(target_mm, stage_min, stage_max))
 
         # --- gauge ----------------------------------------------------------
-        # Resize the ribbon rectangle in-place (cheap; preserves blit).
-        actual_fill.set_height(actual_disp)
-        actual_fill.set_facecolor("lime" if res.valid else "orange")
+        # Replace the filled ribbon with a fresh polygon spanning [0, actual].
+        nonlocal_actual_fill = state["actual_fill"]
+        nonlocal_actual_fill.remove()
+        new_fill = ax_gauge.fill_between(
+            [-GAUGE_HALF * 0.5, GAUGE_HALF * 0.5],
+            0.0, actual_disp,
+            color="lime" if res.valid else "orange", alpha=0.55,
+        )
+        state["actual_fill"] = new_fill
 
         actual_marker.set_ydata([actual_disp])
         actual_marker.set_color("lime" if res.valid else "orange")
+        actual_text.set_y(actual_disp)
+        actual_text.set_text(f" {actual_mm:+.3f} mm")
+        actual_text.set_color("lime" if res.valid else "orange")
 
         target_marker.set_ydata([target_disp])
+        target_text.set_y(target_disp)
+        target_text.set_text(f"{target_mm:+.3f} mm ")
 
         # --- history --------------------------------------------------------
         t_now = time.monotonic() - state["t0"]
@@ -302,7 +327,7 @@ def main() -> None:
         )
 
         state["idx"] = (i + 1) % n_frames
-        return DYNAMIC_ARTISTS
+        return ()
 
     def on_key(event):
         if event.key == " ":
@@ -315,7 +340,7 @@ def main() -> None:
     fig.canvas.mpl_connect("key_press_event", on_key)
 
     ani = animation.FuncAnimation(
-        fig, update, interval=1000.0 / FPS, blit=True, cache_frame_data=False,
+        fig, update, interval=1000.0 / FPS, blit=False, cache_frame_data=False,
     )
     fig._ani = ani  # type: ignore[attr-defined]
     # Use constrained_layout-style spacing without the wonky tight_layout call.

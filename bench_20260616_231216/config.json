@@ -1,0 +1,76 @@
+{
+  "timestamp": "2026-06-16 23:15:23",
+  "motion": {
+    "velocity_mm_s": 125.0,
+    "acceleration_mm_s2": 6000.0
+  },
+  "detection": {
+    "noise_counts": 3,
+    "engage_band_counts": 50,
+    "settle_band_counts": 3,
+    "settle_hold_s": 0.005,
+    "timeout_s": 0.5
+  },
+  "configurations": [
+    {
+      "name": "010um_pos",
+      "distance_um": 10,
+      "direction": 1,
+      "trials": 100
+    },
+    {
+      "name": "010um_neg",
+      "distance_um": 10,
+      "direction": -1,
+      "trials": 100
+    },
+    {
+      "name": "025um_pos",
+      "distance_um": 25,
+      "direction": 1,
+      "trials": 100
+    },
+    {
+      "name": "025um_neg",
+      "distance_um": 25,
+      "direction": -1,
+      "trials": 100
+    },
+    {
+      "name": "050um_pos",
+      "distance_um": 50,
+      "direction": 1,
+      "trials": 100
+    },
+    {
+      "name": "050um_neg",
+      "distance_um": 50,
+      "direction": -1,
+      "trials": 100
+    },
+    {
+      "name": "100um_pos",
+      "distance_um": 100,
+      "direction": 1,
+      "trials": 100
+    },
+    {
+      "name": "100um_neg",
+      "distance_um": 100,
+      "direction": -1,
+      "trials": 100
+    },
+    {
+      "name": "200um_pos",
+      "distance_um": 200,
+      "direction": 1,
+      "trials": 100
+    },
+    {
+      "name": "200um_neg",
+      "distance_um": 200,
+      "direction": -1,
+      "trials": 100
+    }
+  ]
+}

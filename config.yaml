@@ -25,8 +25,8 @@ source:
 
 # SUBJECT TO CHANGE ----
 driver:
-  type: mock # switch between "mock" for simulation and "can" for real
-  can_channel: PCAN_USBBUS1
+  type: can
+  can_channel: can0
   can_bitrate: 1000000
 
 
