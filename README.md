@@ -117,7 +117,7 @@ Switch positions viewed from back:
     ┌──────────────────┐
     │  O Z             │
     │                  │
-    │  ▪  ▪  ▪  ▪     │
+    │  ▪  ▪  ▪  ▪      │
     │  1  2  3  4      │
     └──────────────────┘
     O = OFF (down)   Z = ON (up)
