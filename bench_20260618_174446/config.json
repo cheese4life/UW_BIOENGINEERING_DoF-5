@@ -1,0 +1,85 @@
+{
+  "timestamp": "2026-06-18 17:46:39",
+  "motion": {
+    "velocity_mm_s": 125.0,
+    "acceleration_mm_s2": 6000.0
+  },
+  "detection": {
+    "noise_counts": 3,
+    "engage_band_counts": 50,
+    "settle_band_counts": 3,
+    "settle_hold_s": 0.005,
+    "timeout_s": 2.0
+  },
+  "safety": {
+    "soft_limit_pos_mm": 1.6,
+    "soft_limit_neg_mm": -2.4,
+    "home_mm": 0.0,
+    "safety_margin_mm": 0.05,
+    "home_drift_warn_counts": 50,
+    "re_home_between_trials": true,
+    "abort_on_travel_violation": true
+  },
+  "configurations": [
+    {
+      "name": "010um_pos",
+      "distance_um": 10,
+      "direction": 1,
+      "trials": 100
+    },
+    {
+      "name": "010um_neg",
+      "distance_um": 10,
+      "direction": -1,
+      "trials": 100
+    },
+    {
+      "name": "025um_pos",
+      "distance_um": 25,
+      "direction": 1,
+      "trials": 100
+    },
+    {
+      "name": "025um_neg",
+      "distance_um": 25,
+      "direction": -1,
+      "trials": 100
+    },
+    {
+      "name": "050um_pos",
+      "distance_um": 50,
+      "direction": 1,
+      "trials": 100
+    },
+    {
+      "name": "050um_neg",
+      "distance_um": 50,
+      "direction": -1,
+      "trials": 100
+    },
+    {
+      "name": "100um_pos",
+      "distance_um": 100,
+      "direction": 1,
+      "trials": 100
+    },
+    {
+      "name": "100um_neg",
+      "distance_um": 100,
+      "direction": -1,
+      "trials": 100
+    },
+    {
+      "name": "200um_pos",
+      "distance_um": 200,
+      "direction": 1,
+      "trials": 100
+    },
+    {
+      "name": "200um_neg",
+      "distance_um": 200,
+      "direction": -1,
+      "trials": 100
+    }
+  ]
+}

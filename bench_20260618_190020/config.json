@@ -1,0 +1,63 @@
+{
+  "timestamp": "2026-06-18 19:02:59",
+  "motion": {
+    "velocity_mm_s": 125.0,
+    "acceleration_mm_s2": 6000.0
+  },
+  "detection": {
+    "noise_counts": 3,
+    "engage_band_counts": 50,
+    "settle_band_counts": 3,
+    "settle_hold_s": 0.005,
+    "timeout_s": 2.0
+  },
+  "safety": {
+    "soft_limit_pos_mm": 5.8101400000000005,
+    "soft_limit_neg_mm": 0.020140000000000005,
+    "travel_source": "empirically discovered at startup via probe_travel_envelope()",
+    "home_mm": 2.91514,
+    "safety_margin_mm": 0.1,
+    "home_drift_warn_counts": 50,
+    "re_home_between_trials": true,
+    "abort_on_travel_violation": true,
+    "preflight_verify_positions": true
+  },
+  "configurations": [
+    {
+      "name": "100um_pos",
+      "distance_um": 100,
+      "direction": 1,
+      "trials": 100
+    },
+    {
+      "name": "100um_neg",
+      "distance_um": 100,
+      "direction": -1,
+      "trials": 100
+    },
+    {
+      "name": "1000um_pos",
+      "distance_um": 1000,
+      "direction": 1,
+      "trials": 100
+    },
+    {
+      "name": "1000um_neg",
+      "distance_um": 1000,
+      "direction": -1,
+      "trials": 100
+    },
+    {
+      "name": "4000um_pos",
+      "distance_um": 4000,
+      "direction": 1,
+      "trials": 100
+    },
+    {
+      "name": "4000um_neg",
+      "distance_um": 4000,
+      "direction": -1,
+      "trials": 100
+    }
+  ]
+}

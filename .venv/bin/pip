@@ -1,6 +1,4 @@
-#!/bin/sh
-'''exec' "/Users/antonbloch/Desktop/ivan lab/DOF_files/SRC/.venv/bin/python3.12" "$0" "$@"
-' '''
+#!/home/remote/UW_BIOENGINEERING_DoF-5/.venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys

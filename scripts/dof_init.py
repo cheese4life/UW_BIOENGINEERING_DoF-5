@@ -35,6 +35,24 @@ OP_CAL_ANALOG = 0xF5
 OPMODE_CAL = 0x06
 OPMODE_FULL = 0x37
 
+# Additional read-only opcodes verified in smoketest_results/
+# stage_telemetry_reference.txt. These unlock the multi-channel telemetry
+# we need for payload characterization. From the smoke-test reference:
+#   0xAD GetActualVelocity      | 6 bytes | ~390-430 us
+#   0x4A GetCommandedPosition   | 6 bytes | ~380-420 us  (trajectory planner target)
+#   0x1E GetTargetPosition      | 6 bytes | ~430-460 us  (final destination)
+#   0xB6 GetMotorCommand        | 2 bytes | ~315-345 us  (voice-coil force proxy)
+#   0x4B GetIntegrationStep     | 6 bytes | ~380-440 us  (servo loop integrator)
+#   0xA6 GetActivityStatus      | 4 bytes | ~340-360 us
+#   0xA7 GetSignalStatus        | 6 bytes | ~340-360 us
+OP_GET_ACT_VEL = 0xAD
+OP_GET_CMD_POS = 0x4A
+OP_GET_TGT_POS = 0x1E
+OP_GET_MOTOR_CMD = 0xB6
+OP_GET_INTEG_STEP = 0x4B
+OP_GET_ACT_STATUS = 0xA6
+OP_GET_SIG_STATUS = 0xA7
+
 
 
 # ---------------------------------------------------------------------------
@@ -69,8 +87,51 @@ def s32(d):
     return struct.unpack(">i", sign * (4 - len(body)) + body)[0]
 
 
+def s16(d):
+    """Decode a signed 16-bit value from a 2-byte Juno response body
+    (after the axis/opcode prefix). Used for OP_GET_MOTOR_CMD which
+    returns 2 bytes per the smoke-test reference."""
+    body = d[2:4]
+    if len(body) < 2:
+        return 0
+    return struct.unpack(">h", body)[0]
+
+
 def get_pos_counts(bus):
     return s32(sr(bus, OP_GET_ACT_POS))
+
+
+def get_velocity_counts_per_sample(bus):
+    """GetActualVelocity (0xAD). Returns velocity in encoder counts per
+    servo sample period (SAMPLE_S = 51 µs). Caller converts to mm/s via
+    `vel_counts / COUNTS_PER_MM / SAMPLE_S`."""
+    return s32(sr(bus, OP_GET_ACT_VEL))
+
+
+def get_velocity_mm_s(bus):
+    """Convenience wrapper: GetActualVelocity converted to mm/s."""
+    return get_velocity_counts_per_sample(bus) / COUNTS_PER_MM / SAMPLE_S
+
+
+def get_commanded_pos_counts(bus):
+    """GetCommandedPosition (0x4A). The trajectory planner's intended
+    position at this instant. Difference from GetActualPosition is the
+    'following error' — a key indicator of how well the servo is keeping
+    up with the commanded trajectory under payload."""
+    return s32(sr(bus, OP_GET_CMD_POS))
+
+
+def get_motor_cmd(bus):
+    """GetMotorCommand (0xB6). Voice-coil current command in raw register
+    units. Sign = direction of force; magnitude ≈ force applied to the
+    payload. Sudden changes = jerk = vibration input to optics."""
+    return s16(sr(bus, OP_GET_MOTOR_CMD))
+
+
+def get_target_pos_counts(bus):
+    """GetTargetPosition (0x1E). The final destination the trajectory
+    planner is currently aiming at."""
+    return s32(sr(bus, OP_GET_TGT_POS))
 
 
 def vel_reg(mm_s):
