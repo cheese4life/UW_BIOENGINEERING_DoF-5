@@ -1,0 +1,30 @@
+{
+  "profile": "calm",
+  "sample": "cornea_1",
+  "duration_s": 5.0,
+  "master_fps": 400,
+  "n_frames": 2000,
+  "seed": 42,
+  "max_shift_px": 50,
+  "dz_mm_per_row": 0.004593,
+  "frame_shape": [
+    511,
+    256
+  ],
+  "params": {
+    "drift_theta": 0.03,
+    "drift_sigma": 5.0,
+    "tremor_amplitude": 0.1,
+    "saccade_rate": 1.0,
+    "saccade_amp_mu": 2.0,
+    "saccade_amp_sigma": 2.0,
+    "saccade_amp_min": 1.0,
+    "saccade_amp_max": 6.0,
+    "saccade_jump_min": 20.0,
+    "saccade_jump_max": 30.0,
+    "saccade_tau_min": 0.05,
+    "saccade_tau_max": 0.15,
+    "breath_amplitude": 0.4,
+    "heart_amplitude": 0.2
+  }
+}

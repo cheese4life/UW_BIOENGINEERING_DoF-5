@@ -1,0 +1,9 @@
+{
+  "n_frames": 2000,
+  "shift_mean": 0.8789,
+  "shift_std": 2.3065,
+  "shift_min": -5.0129,
+  "shift_max": 5.6353,
+  "position_range_mm": "-0.023 .. 0.0259",
+  "disk_mb": 1046.8
+}
