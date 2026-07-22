@@ -176,6 +176,13 @@ def focus_live():
     img_buffer = np.frombuffer(img_bytes, dtype=np.uint8)
     
     img = cv2.imdecode(img_buffer, cv2.IMREAD_GRAYSCALE)
+
+    if img is None:
+        return jsonify({
+            "status": "error",
+            "message": "Image could not be decoded",
+        }), 400
+
     img = img.astype(np.float32)
     
     if img is None:
@@ -189,6 +196,7 @@ def focus_live():
     dof_init.set_motion_params(_bus, vel_mm_s = vel, acc_mm_s2 = acc)
     
     cv_us = 0.0
+    overlay_b64 = None
     if img is not None:
         # CV mode: measure detection time, then use detected error
         from cornea_focus.surface import detect
@@ -206,24 +214,34 @@ def focus_live():
             "surface_y": np.round(res.surface_y, 1).tolist(),
             "valid": res.valid,
         }
-        if res.valid:
-            # CV error already has a sign via (median_y - focus_row). Stage
-            # moves OPPOSITE the error (control.py sign convention):
-            #   positive error (cornea below focus) → stage moves up (negative)
-            cv_error_um = (res.median_y - _focus_row) * _dz_mm_per_row * 1000.0
-            error_um_actual = abs(round(cv_error_um, 1))
-            direction = -1 if cv_error_um > 0 else 1
-            report_extra = {
-                "cv_detected_median_y": round(float(res.median_y), 1),
-                "cv_focus_row": _focus_row,
-                "cv_error_px": round(float(res.median_y - _focus_row), 1),
-                "cv_baseline_median_y": round(_cv_baseline_median_y, 1),
-                "cv_shift_px": _cv_shift_px,
-                "cv_detected_shift_px": round(float(res.median_y - _cv_baseline_median_y), 1),
-            }
-        else:
-            error_um_actual = error_um
-            report_extra = {}
+        # Render the CV overlay (surface trace + bounding box + error text)
+        # on the incoming snapshot frame so callers can display it.
+        overlay_b64 = _render_frame_to_png(
+            img, surface_y=res.surface_y, focus_row=_focus_row,
+            median_y=res.median_y, top_y=res.top_y, bottom_y=res.bottom_y,
+            valid=res.valid,
+        )
+        if not res.valid:
+            return jsonify({
+                "status": "error",
+                "message": "Focus detection was invalid",
+                "overlay_b64": overlay_b64,
+            }), 422
+
+        # CV error already has a sign via (median_y - focus_row). Stage
+        # moves OPPOSITE the error (control.py sign convention):
+        #   positive error (cornea below focus) → stage moves up (negative)
+        cv_error_um = (res.median_y - _focus_row) * _dz_mm_per_row * 1000.0
+        error_um_actual = abs(round(cv_error_um, 1))
+        direction = -1 if cv_error_um > 0 else 1
+        report_extra = {
+            "cv_detected_median_y": round(float(res.median_y), 1),
+            "cv_focus_row": _focus_row,
+            "cv_error_px": round(float(res.median_y - _focus_row), 1),
+            "cv_baseline_median_y": round(_cv_baseline_median_y, 1),
+            "cv_shift_px": _cv_shift_px,
+            "cv_detected_shift_px": round(float(res.median_y - _cv_baseline_median_y), 1),
+        }
     else:
         error_um_actual = error_um
 
@@ -242,6 +260,8 @@ def focus_live():
     if cv_us > 0:
         report["cv_ms"] = round(cv_us / 1000.0, 2)
         report.update(report_extra)
+    if overlay_b64 is not None:
+        report["overlay_b64"] = overlay_b64
     report["t_arrival_ns"] = t_arrival_ns
     return jsonify(report)
 

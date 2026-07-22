@@ -2,7 +2,7 @@ import time
 
 from dataclasses import dataclass
 import base64
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 
 import numpy as np
 import cv2
@@ -17,6 +17,8 @@ import sys
 from pathlib import Path
 import json 
 import csv
+import urllib.request
+import urllib.error
 
 
 app = Flask(__name__)
@@ -35,8 +37,153 @@ _state = {
     "current_frame": None, # np.ndarray
     "all_shifts": None,    # np.ndarray
     "_t_start": 0.0,
-    "_t_at_pause": 0.0
+    "_t_at_pause": 0.0,
+    "last_focus_json": None,   # latency + error JSON from last /snapshot run
+    "last_overlay_png": None,  # CV overlay PNG bytes from last /snapshot run
 }
+
+# cooldown timer to debounce LabVIEW button-hold (seconds)
+_last_focus_time = 0.0
+_FOCUS_COOLDOWN = 1.0
+
+# autofocus webapp endpoint that runs CV detection + stage move + latency
+WEBAPP_FOCUS_URL = "http://127.0.0.1:5000/focus_live"
+
+# make sibling packages (cornea_focus, scripts) importable for local CV overlay
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+# CV overlay geometry (mirror scripts/autofocus_latency_webapp.py)
+_FOCUS_ROW = 150
+_DZ_MM_PER_ROW = 0.004593
+
+
+def _render_overlay_png(frame, surface_y=None, focus_row=None,
+                        median_y=None, top_y=None, bottom_y=None,
+                        valid=True) -> bytes:
+    """Render an OCT frame + surface trace + bounding box + error text to raw
+    PNG bytes. Mirrors _render_frame_to_png in the autofocus webapp so the
+    overlay looks identical. Always returns valid PNG bytes."""
+    import matplotlib.pyplot as plt
+
+    h, w = frame.shape
+    fmin, fmax = float(frame.min()), float(frame.max())
+    img = ((frame - fmin) / (fmax - fmin + 1e-9) * 255).astype(np.uint8)
+
+    dpi = 80
+    fig, ax = plt.subplots(figsize=(w / dpi * 1.2, h / dpi), dpi=dpi)
+    ax.imshow(img, cmap="gray", aspect="auto", extent=[0, w, h, 0])
+    ax.set_xlim(0, w)
+    ax.set_ylim(h, 0)
+
+    if surface_y is not None and len(surface_y) > 0:
+        sy = np.asarray(surface_y, dtype=float)
+        xs = np.arange(w) + 0.5
+        ax.plot(xs, sy, color="lime", linewidth=1.5)
+        if top_y is not None and bottom_y is not None and valid:
+            col0, col1 = xs[0], xs[-1]
+            rect = plt.Rectangle((col0, top_y), col1 - col0, bottom_y - top_y,
+                                 linewidth=2, edgecolor="cyan",
+                                 facecolor="none", linestyle="-")
+            ax.add_patch(rect)
+            ax.text(5, max(2, top_y - 8),
+                    f"box: rows {top_y:.0f}-{bottom_y:.0f}",
+                    color="cyan", fontsize=8, family="monospace",
+                    bbox=dict(facecolor="black", alpha=0.7))
+
+    if focus_row is not None:
+        ax.axhline(focus_row, color="white", linestyle="--", linewidth=1)
+
+    if median_y is not None:
+        ax.axhline(median_y, color="lime", linewidth=1.2)
+        err = median_y - focus_row if focus_row else 0
+        ax.text(5, focus_row + 5 if focus_row else 10,
+                f"err={err:.1f} px ({err * _DZ_MM_PER_ROW * 1000:.1f} um)",
+                color="white", fontsize=9, family="monospace",
+                bbox=dict(facecolor="black", alpha=0.7))
+
+    if not valid:
+        ax.text(w / 2, h / 2, "INVALID", color="red", fontsize=20,
+                ha="center", va="center", weight="bold",
+                bbox=dict(facecolor="black", alpha=0.7))
+
+    ax.axis("off")
+    fig.tight_layout(pad=0)
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight",
+                pad_inches=0, facecolor="black")
+    plt.close(fig)
+    buf.seek(0)
+    return buf.getvalue()
+
+
+def _detect_and_render_overlay(frame) -> bytes:
+    """Run CV surface detection on the current frame and render the overlay
+    locally. ALWAYS returns valid PNG bytes: on any failure it still renders a
+    frame carrying the INVALID marker, and as a last resort encodes the raw
+    frame with cv2.imencode so the caller never receives non-PNG bytes."""
+    try:
+        from cornea_focus.surface import detect
+        from cornea_focus.config import DetectorConfig
+        det_cfg = DetectorConfig(mask_top_rows=10, blur_sigma=3,
+                                 peak_prominence=10, smoothing_window=11)
+        res = detect(frame.astype(np.float32), det_cfg)
+        return _render_overlay_png(
+            frame, surface_y=res.surface_y, focus_row=_FOCUS_ROW,
+            median_y=res.median_y, top_y=res.top_y, bottom_y=res.bottom_y,
+            valid=res.valid,
+        )
+    except Exception as exc:
+        print("overlay detection failed:", repr(exc))
+        try:
+            return _render_overlay_png(frame, focus_row=_FOCUS_ROW, valid=False)
+        except Exception as exc2:
+            print("overlay render failed:", repr(exc2))
+            fmin, fmax = float(frame.min()), float(frame.max())
+            img8 = ((frame - fmin) / (fmax - fmin + 1e-9) * 255).astype(np.uint8)
+            ok, enc = cv2.imencode(".png", img8)
+            return enc.tobytes() if ok else b""
+
+
+def _call_focus_webapp(img_b64: str) -> dict:
+    """POST the snapshot frame to the autofocus webapp's /focus_live, which runs
+    CV surface detection, moves the DOF stage, and measures latency. Returns the
+    latency + error JSON dict (any overlay_b64 is discarded; sim_server renders
+    its own overlay locally)."""
+    payload = json.dumps({
+        "img": img_b64,
+        "velocity_mm_s": 125.0,
+        "acceleration_mm_s2": 6000.0,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        WEBAPP_FOCUS_URL, data=payload,
+        headers={"Content-Type": "application/json"}, method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            body = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as e:
+        # e.g. 422 invalid detection still carries a JSON body
+        body = e.read().decode("utf-8")
+    except Exception as exc:
+        return {"status": "error", "message": f"focus_live failed: {exc!r}"}
+
+    try:
+        result = json.loads(body)
+    except Exception:
+        return {"status": "error", "message": "focus_live returned non-JSON"}
+
+    result.pop("overlay_b64", None)  # overlay is produced locally instead
+    return result
+
+
+def _run_autofocus(img_b64: str, frame):
+    """Run the full autofocus for one /snapshot: get the latency JSON from the
+    webapp and render the CV overlay locally. Returns (json_dict, png_bytes)."""
+    focus_json = _call_focus_webapp(img_b64)
+    overlay_png = _detect_and_render_overlay(frame)
+    return focus_json, overlay_png
+
 
 def load_sim(sim_dir: Path) -> None:
     with _lock:
@@ -176,8 +323,37 @@ def live_frame():
         "time_s": round(t_sim, 6),
         "shift_px": round(shift_px, 4),
     })
-    
-    
+
+
+@app.route("/live_frame_png", methods=["GET"])
+def live_frame_png():
+    with _lock:
+        frame = _state["current_frame"]
+        idx = _state["frame_idx"]
+
+    if frame is None:
+        return jsonify({"error": "No simulation loaded"}), 400
+
+    import matplotlib.pyplot as plt
+
+    h, w = frame.shape
+    fmin, fmax = float(frame.min()), float(frame.max())
+    img_u8 = ((frame - fmin) / (fmax - fmin + 1e-9) * 255).astype(np.uint8)
+
+    fig, ax = plt.subplots(figsize=(w / 80 * 1.2, h / 80), dpi=80)
+    ax.imshow(img_u8, cmap="gray", aspect="auto")
+    ax.axis("off")
+    fig.tight_layout(pad=0)
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight",
+                pad_inches=0, facecolor="black")
+    plt.close(fig)
+    buf.seek(0)
+
+    return send_file(buf, mimetype="image/png")
+
+
 @app.route("/state", methods=["GET"])
 def state():
     with _lock:
@@ -189,7 +365,103 @@ def state():
             "master_fps": _state["master_fps"],
             "time_s": round(_state["frame_idx"] / _state["master_fps"], 6),
         })
-    
+
+
+@app.route("/snapshot", methods=["GET", "POST"])
+def snapshot():
+    """LabVIEW FOCUS → returns raw PNG for snapshot display. Also internally
+    triggers the webapp's /focus_live on localhost. 1.0s cooldown."""
+    global _last_focus_time
+
+    now = time.monotonic()
+    should_trigger_focus = now - _last_focus_time >= _FOCUS_COOLDOWN
+    if should_trigger_focus:
+        _last_focus_time = now
+
+    with _lock:
+        frame = _state["current_frame"]
+        idx = _state["frame_idx"]
+        shift_px = _state["shift_px"]
+        mfps = _state["master_fps"]
+
+    if frame is None:
+        return jsonify({"error": "No simulation loaded"}), 400
+
+    t_sim = idx / mfps
+
+    import matplotlib.pyplot as plt
+
+    h, w = frame.shape
+    fmin, fmax = float(frame.min()), float(frame.max())
+    img_u8 = ((frame - fmin) / (fmax - fmin + 1e-9) * 255).astype(np.uint8)
+
+    fig, ax = plt.subplots(figsize=(w / 80 * 1.2, h / 80), dpi=80)
+    ax.imshow(img_u8, cmap="gray", aspect="auto")
+    ax.axis("off")
+    fig.tight_layout(pad=0)
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight",
+                pad_inches=0, facecolor="black")
+    plt.close(fig)
+    buf.seek(0)
+
+    # png_bytes must exist on every request (always return a valid PNG)
+    buf.seek(0)
+    png_bytes = buf.getvalue()
+
+    # cooldown affects only autofocus trigger, never the returned snapshot.
+    # When triggered we synchronously run the autofocus webapp's CV detection
+    # + stage move, then cache the latency JSON and CV overlay PNG so LabVIEW
+    # can fetch them from /snapshot_json and /snapshot_overlay. Both are
+    # committed together under one lock so they always describe the same run.
+    if should_trigger_focus:
+        img_b64 = base64.b64encode(png_bytes).decode("ascii")
+        focus_json, overlay_png = _run_autofocus(img_b64, frame)
+        with _lock:
+            _state["last_focus_json"] = focus_json
+            _state["last_overlay_png"] = overlay_png
+
+    response = send_file(
+        io.BytesIO(png_bytes),
+        mimetype="image/png",
+        download_name="focus_snapshot.png",
+    )
+    response.headers["X-Frame-Index"] = str(idx)
+    response.headers["X-Time-S"] = str(round(t_sim, 6))
+    response.headers["X-Shift-Px"] = str(round(shift_px, 4))
+    return response
+
+
+@app.route("/snapshot_json", methods=["GET"])
+def snapshot_json():
+    """Return the latency + error-correction JSON from the most recent
+    /snapshot autofocus run."""
+    with _lock:
+        data = _state.get("last_focus_json")
+    if data is None:
+        return jsonify({
+            "status": "pending",
+            "message": "no autofocus run yet; call /snapshot first",
+        }), 200
+    return jsonify(data)
+
+
+@app.route("/snapshot_overlay", methods=["GET"])
+def snapshot_overlay():
+    """Return the CV overlay PNG (surface trace + bounding box + error text)
+    from the most recent /snapshot autofocus run."""
+    with _lock:
+        png = _state.get("last_overlay_png")
+    if not png:
+        return jsonify({
+            "status": "pending",
+            "message": "no overlay yet; call /snapshot first",
+        }), 404
+    return send_file(io.BytesIO(png), mimetype="image/png",
+                     download_name="focus_overlay.png")
+
+
 
 @app.route("/set_params", methods=["POST"])
 def set_params():
